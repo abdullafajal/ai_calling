@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Call Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --primary-light: rgba(102, 126, 234, 0.15);
+            --success: #10b981;
+            --success-light: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444;
+            --danger-light: rgba(239, 68, 68, 0.15);
+            --warning: #f59e0b;
+            --warning-light: rgba(245, 158, 11, 0.15);
+            
+            /* Dark theme colors */
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #131824;
+            --bg-tertiary: #1a202e;
+            --bg-quaternary: #232938;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --border-color: #1e293b;
+            --shadow: rgba(0, 0, 0, 0.5);
+            --glow: rgba(102, 126, 234, 0.4);
+            
+            /* Message bubbles with better contrast */
+            --user-msg-bg: linear-gradient(135deg, #1e3a8a, #2563eb);
+            --ai-msg-bg: linear-gradient(135deg, #581c87, #7c3aed);
+            --system-msg-bg: linear-gradient(135deg, #78350f, #d97706);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+        }
+
+        /* Compact Header with Action in Center */
+        .header {
+            background: var(--bg-secondary);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            position: relative;
+            min-height: 64px;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.3;
+        }
+
+        .app-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .app-subtitle {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .action-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex: 1;
+            max-width: 50%;
+        }
+
+        .action-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-icon {
+            font-size: 16px;
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .action-title {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+
+        .call-timer {
+            font-size: 14px;
+            color: var(--success);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-btn:hover {
+            background: var(--bg-quaternary);
+            color: var(--primary);
+            border-color: var(--primary);
+            transform: rotate(45deg);
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .status-indicator::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.3;
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .status-connected { 
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        .status-disconnected { 
+            background: var(--text-tertiary);
+        }
+        .status-connecting { 
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+        }
+
+        .recording-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: recordPulse 1.2s ease-in-out infinite;
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        .speaking-indicator { 
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        @keyframes recordPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+        }
+
+        /* Audio bars animation */
+        .audio-bars {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .audio-bar {
+            width: 2px;
+            background: var(--success);
+            border-radius: 2px;
+            animation: audioBar 0.8s ease-in-out infinite;
+        }
+
+        .audio-bar:nth-child(1) { height: 12px; animation-delay: 0s; }
+        .audio-bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+        .audio-bar:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+        .audio-bar:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+        .audio-bar:nth-child(5) { height: 12px; animation-delay: 0.4s; }
+
+        @keyframes audioBar {
+            0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+            50% { transform: scaleY(1); opacity: 1; }
+        }
+
+        /* Main Content - Maximized Space */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 16px 20px;
+            min-height: 0;
+        }
+
+        /* Enhanced Transcript - Now Much Bigger */
+        .transcript {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .transcript-header {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .transcript-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        .transcript-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .transcript-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .transcript-content::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+
+        .transcript-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-tertiary);
+        }
+
+        .transcript-item {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: messageSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 85%;
+            position: relative;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .transcript-item.user {
+            background: var(--user-msg-bg);
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+            color: #ffffff;
+        }
+
+        .transcript-item.ai {
+            background: var(--ai-msg-bg);
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+            color: #ffffff;
+        }
+
+        .transcript-item.system {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            align-self: center;
+            text-align: center;
+            font-style: italic;
+            font-size: 12px;
+            max-width: 80%;
+            color: var(--text-secondary);
+        }
+
+        .transcript-item small {
+            display: block;
+            margin-bottom: 6px;
+            opacity: 0.7;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .transcript-item i {
+            margin-right: 4px;
+        }
+
+        /* Enhanced Call Controls */
+        .call-controls {
+            background: var(--bg-primary);
+            padding: 20px 16px 28px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .call-controls::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.2;
+        }
+
+        .control-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 16px var(--shadow);
+            position: relative;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            padding: 2px;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,0.2));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .control-btn:hover::before {
+            opacity: 1;
+        }
+
+        .control-btn:active {
+            transform: scale(0.92);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, var(--success), #059669);
+            width: 68px;
+            height: 68px;
+            font-size: 26px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-start:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-end {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            width: 68px;
+            height: 68px;
+            font-size: 26px;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+            animation: endButtonGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes endButtonGlow {
+            0%, 100% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6); }
+        }
+
+        .btn-end:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-mute {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-tertiary);
+        }
+
+        .btn-mute.unmuted {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: scale(0.95);
+        }
+
+        /* Enhanced Settings Modal */
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .settings-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 420px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 64px var(--shadow);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .settings-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .form-group label i {
+            margin-right: 8px;
+            color: var(--primary);
+            width: 16px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-quaternary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-text {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .btn-close-settings {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-close-settings:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-close-settings:active {
+            transform: translateY(0);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 480px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-content {
+                padding: 12px 16px;
+            }
+            
+            .header {
+                padding: 10px 16px;
+                min-height: 60px;
+            }
+
+            .app-title {
+                font-size: 16px;
+            }
+
+            .action-title {
+                font-size: 13px;
+            }
+
+            .call-timer {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Compact Header with Action in Center -->
+        <div class="header">
+            <div class="app-info">
+                <div class="app-title">AI Voice Assistant</div>
+                <div class="app-subtitle">Powered by Advanced AI</div>
+            </div>
+            
+            <div class="action-state">
+                <div class="action-content">
+                    <span class="status-indicator status-disconnected" id="status-indicator"></span>
+                    <div class="action-title" id="action-title">Ready to Connect</div>
+                    <div class="audio-bars hidden" id="audio-bars">
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                    </div>
+                    <span class="recording-indicator hidden" id="recording-indicator"></span>
+                </div>
+                <div class="call-timer" id="call-timer">00:00</div>
+            </div>
+            
+            <button class="settings-btn" id="settings-toggle">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Transcript - Now Much Bigger -->
+            <div class="transcript">
+                <div class="transcript-header">
+                    <i class="fas fa-comments"></i>
+                    <span>Conversation History</span>
+                </div>
+                <div class="transcript-content" id="transcript-content"></div>
+            </div>
+        </div>
+
+        <!-- Call Controls -->
+        <div class="call-controls">
+            <button class="control-btn btn-mute" id="mute" disabled>
+                <i class="fas fa-microphone-slash"></i>
+            </button>
+            <button class="control-btn btn-start" id="start-call">
+                <i class="fas fa-phone"></i>
+            </button>
+            <button class="control-btn btn-end hidden" id="end-call" disabled>
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settings-modal">
+        <div class="settings-card">
+            <div class="settings-title">
+                <i class="fas fa-sliders-h"></i>
+                <span>Call Settings</span>
+            </div>
+            
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label><i class="fas fa-globe"></i> Language</label>
+                    <select class="form-control" id="language-select">
+                        <option value="en">English</option>
+                        <option value="hi">Hindi</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Voice</label>
+                    <select class="form-control" id="voice-select">
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label><i class="fas fa-tachometer-alt"></i> Speed</label>
+                    <select class="form-control" id="speed-select">
+                        <option value="1.0">Normal</option>
+                        <option value="1.2">Faster</option>
+                        <option value="1.3" selected>Recommended</option>
+                        <option value="1.5">Very Fast</option>
+                    </select>
+                    <div class="form-text">1.3x sounds most natural</div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-pause"></i> Silence (s)</label>
+                    <input type="number" class="form-control" id="silence-duration" value="1.5" min="0.5" max="3" step="0.5">
+                    <div class="form-text">Response delay threshold</div>
+                </div>
+            </div>
+
+            <button class="btn-close-settings" id="close-settings">
+                <i class="fas fa-check"></i> Save Settings
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
+    <script>
+        const startRecordingButton = document.getElementById('start-call');
+        const endCallButton = document.getElementById('end-call');
+        const muteButton = document.getElementById('mute');
+        const actionTitle = document.getElementById('action-title');
+        const audioBars = document.getElementById('audio-bars');
+        const transcriptContent = document.getElementById('transcript-content');
+        const statusIndicator = document.getElementById('status-indicator');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const callTimer = document.getElementById('call-timer');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const closeSettings = document.getElementById('close-settings');
+
+        let socket;
+        let audioContext;
+        let mediaStreamSource;
+        let processor;
+        let isMuted = false;
+        let silenceTimer;
+        let isSpeaking = false;
+        let silenceDuration;
+        let audioChunks = [];
+        let isRecording = false;
+        let callStartTime;
+        let timerInterval;
+
+        const languageSelect = document.getElementById('language-select');
+        const voiceSelect = document.getElementById('voice-select');
+        const speedSelect = document.getElementById('speed-select');
+        const silenceDurationInput = document.getElementById('silence-duration');
+
+        function updateActionState(state) {
+            switch(state) {
+                case 'idle':
+                    actionTitle.textContent = 'Ready to Connect';
+                    statusIndicator.className = 'status-indicator status-disconnected';
+                    audioBars.classList.add('hidden');
+                    recordingIndicator.classList.add('hidden');
+                    break;
+                case 'connecting':
+                    actionTitle.textContent = 'Connecting...';
+                    statusIndicator.className = 'status-indicator status-connecting';
+                    audioBars.classList.add('hidden');
+                    recordingIndicator.classList.add('hidden');
+                    break;
+                case 'ready':
+                    actionTitle.textContent = 'Ready to Listen';
+                    statusIndicator.className = 'status-indicator status-connected';
+                    audioBars.classList.add('hidden');
+                    recordingIndicator.classList.remove('hidden');
+                    break;
+                case 'listening':
+                    actionTitle.textContent = 'Listening...';
+                    statusIndicator.className = 'status-indicator status-connected';
+                    audioBars.classList.remove('hidden');
+                    recordingIndicator.classList.remove('hidden');
+                    recordingIndicator.classList.add('speaking-indicator');
+                    break;
+                case 'processing':
+                    actionTitle.textContent = 'Processing...';
+                    statusIndicator.className = 'status-indicator status-connecting';
+                    audioBars.classList.add('hidden');
+                    recordingIndicator.classList.remove('hidden');
+                    recordingIndicator.classList.remove('speaking-indicator');
+                    break;
+                case 'speaking':
+                    actionTitle.textContent = 'AI Speaking';
+                    statusIndicator.className = 'status-indicator status-connected';
+                    audioBars.classList.remove('hidden');
+                    recordingIndicator.classList.remove('hidden');
+                    recordingIndicator.classList.remove('speaking-indicator');
+                    break;
+            }
+        }
+
+        function startTimer() {
+            callStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                callTimer.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            callTimer.textContent = '00:00';
+        }
+
+        function addTranscript(text, sender = 'user') {
+            const div = document.createElement('div');
+            div.className = `transcript-item ${sender}`;
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let icon = '';
+            let label = '';
+            
+            if (sender === 'user') {
+                icon = '<i class="fas fa-user"></i>';
+                label = 'You';
+            } else if (sender === 'ai') {
+                icon = '<i class="fas fa-robot"></i>';
+                label = 'AI';
+            } else {
+                icon = '<i class="fas fa-info-circle"></i>';
+                label = 'System';
+            }
+            
+            div.innerHTML = `<small>${timestamp}</small><strong>${icon} ${label}:</strong> ${text}`;
+            transcriptContent.appendChild(div);
+            transcriptContent.scrollTop = transcriptContent.scrollHeight;
+        }
+
+        function convertFloat32ToInt16(buffer) {
+            const l = buffer.length;
+            const buf = new Int16Array(l);
+            for (let i = 0; i < l; i++) {
+                buf[i] = Math.min(1, buffer[i]) * 0x7FFF;
+            }
+            return buf;
+        }
+
+        function encodeWAV(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+
+            const offset = 44;
+            for (let i = 0; i < samples.length; i++) {
+                view.setInt16(offset + i * 2, samples[i], true);
+            }
+
+            return buffer;
+        }
+
+        function sendAudioData() {
+            if (audioChunks.length === 0) {
+                console.log('[Audio] No audio chunks to send');
+                return;
+            }
+
+            console.log('[Audio] Encoding and sending audio data...');
+            updateActionState('processing');
+            
+            const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const allSamples = new Float32Array(totalLength);
+            let offset = 0;
+            for (const chunk of audioChunks) {
+                allSamples.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            console.log(`[Audio] Total samples: ${totalLength}, duration: ${(totalLength / audioContext.sampleRate).toFixed(2)}s`);
+
+            const int16Samples = convertFloat32ToInt16(allSamples);
+            const wavBuffer = encodeWAV(int16Samples, audioContext.sampleRate);
+            
+            console.log(`[Audio] WAV size: ${wavBuffer.byteLength} bytes`);
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(wavBuffer);
+                console.log('[Audio] Sent WAV data to server');
+                
+                setTimeout(() => {
+                    socket.send(JSON.stringify({ 'end_of_speech': true }));
+                    console.log('[Audio] Sent end_of_speech signal');
+                }, 100);
+            }
+
+            audioChunks = [];
+            isRecording = false;
+        }
+
+        function startVoiceDetection(stream) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            mediaStreamSource = audioContext.createMediaStreamSource(stream);
+            
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            mediaStreamSource.connect(analyser);
+            analyser.connect(processor);
+            processor.connect(audioContext.destination);
+            
+            analyser.fftSize = 512;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            processor.onaudioprocess = (e) => {
+                if (isMuted) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+                
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+                const threshold = 20;
+
+                if (average > threshold) {
+                    if (!isSpeaking) {
+                        console.log('[VAD] Speech started, average:', average);
+                        isSpeaking = true;
+                        isRecording = true;
+                        updateActionState('listening');
+                    }
+
+                    if (isRecording) {
+                        audioChunks.push(new Float32Array(inputData));
+                    }
+
+                    if (silenceTimer) {
+                        clearTimeout(silenceTimer);
+                        silenceTimer = null;
+                    }
+                } else if (isSpeaking) {
+                    if (!silenceTimer) {
+                        console.log('[VAD] Silence detected, starting timer...');
+
+                        silenceTimer = setTimeout(() => {
+                            console.log('[VAD] Silence duration exceeded, sending audio');
+                            isSpeaking = false;
+                            sendAudioData();
+                        }, silenceDuration);
+                    }
+                }
+            };
+            
+            updateActionState('ready');
+        }
+
+        // Settings modal
+        settingsToggle.addEventListener('click', () => {
+            settingsModal.style.display = 'flex';
+        });
+
+        closeSettings.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+        });
+
+        startRecordingButton.addEventListener('click', () => {
+            const language = languageSelect.value;
+            const voice = voiceSelect.value;
+            const speed = speedSelect.value;
+            silenceDuration = parseFloat(silenceDurationInput.value) * 1000;
+            
+            console.log('[UI] Start call clicked');
+            console.log('[Config] Language:', language, 'Voice:', voice, 'Speed:', speed, 'Silence Duration:', silenceDuration + 'ms');
+            
+            updateActionState('connecting');
+            
+            navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 16000
+                }
+            })
+            .then(stream => {
+                updateActionState('connecting');
+                startTimer();
+                
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/call/?language=${language}&voice=${voice}&speed=${speed}`;
+                
+                console.log('[WebSocket] Connecting to:', wsUrl);
+                socket = new WebSocket(wsUrl);
+
+                socket.onopen = () => {
+                    console.log('[WebSocket] Connection established');
+                    addTranscript('Call connected - Speak naturally!', 'system');
+                    
+                    startRecordingButton.classList.add('hidden');
+                    endCallButton.classList.remove('hidden');
+                    endCallButton.disabled = false;
+                    muteButton.disabled = false;
+                    
+                    startVoiceDetection(stream);
+                };
+
+                socket.onerror = (error) => {
+                    console.error('[WebSocket] Error:', error);
+                    updateActionState('idle');
+                    addTranscript('Connection error occurred', 'system');
+                    stopTimer();
+                };
+
+                socket.onmessage = event => {
+                    if (event.data instanceof Blob) {
+                        console.log('[WebSocket] Received blob data');
+                        return;
+                    }
+
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[WebSocket] Received message:', data);
+                        
+                        if (data.audio_url) {
+                            console.log('[Audio] Playing:', data.audio_url);
+                            updateActionState('speaking');
+                            const audio = new Audio(data.audio_url + '?t=' + Date.now());
+                            audio.play().catch(err => {
+                                console.error('[Audio] Error playing:', err);
+                            });
+                            audio.onended = () => {
+                                updateActionState('ready');
+                            };
+                        }
+                        
+                        if (data.transcript) {
+                            addTranscript(data.transcript, data.sender || 'ai');
+                            if (data.sender === 'user' || data.sender === 'ai') {
+                                updateActionState('ready');
+                            }
+                        }
+                        
+                        if (data.message) {
+                            addTranscript(data.message, 'system');
+                        }
+                        
+                        if (data.error) {
+                            console.error('[Server] Error:', data.transcript);
+                            addTranscript(data.transcript, 'system');
+                            updateActionState('ready');
+                        }
+                    } catch (error) {
+                        console.error('[WebSocket] Error parsing message:', error);
+                    }
+                };
+
+                socket.onclose = (event) => {
+                    console.log('[WebSocket] Connection closed', event.code, event.reason);
+                    updateActionState('idle');
+                    addTranscript('Call ended', 'system');
+                    stopTimer();
+                    
+                    startRecordingButton.classList.remove('hidden');
+                    endCallButton.classList.add('hidden');
+                    endCallButton.disabled = true;
+                    muteButton.disabled = true;
+                    
+                    if (processor) {
+                        processor.disconnect();
+                        processor = null;
+                    }
+                    
+                    if (mediaStreamSource) {
+                        mediaStreamSource.disconnect();
+                        mediaStreamSource = null;
+                    }
+                    
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    if (audioContext) {
+                        audioContext.close();
+                        audioContext = null;
+                    }
+                    
+                    if (silenceTimer) {
+                        clearTimeout(silenceTimer);
+                    }
+                    
+                    audioChunks = [];
+                };
+            })
+            .catch(error => {
+                console.error('[MediaDevices] Error accessing microphone:', error);
+                alert('Error accessing microphone: ' + error.message);
+                updateActionState('idle');
+                stopTimer();
+            });
+        });
+
+        endCallButton.addEventListener('click', () => {
+            console.log('[UI] End call clicked');
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+        });
+
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            if (isMuted) {
+                muteButton.innerHTML = '<i class="fas fa-microphone"></i>';
+                muteButton.classList.add('unmuted');
+            } else {
+                muteButton.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                muteButton.classList.remove('unmuted');
+            }
+            
+            addTranscript(isMuted ? 'Microphone muted' : 'Microphone unmuted', 'system');
+            console.log('[Audio] Mute state:', isMuted);
+        });
+    </script>
+</body>
+</html>
