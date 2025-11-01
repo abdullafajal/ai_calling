@@ -139,4 +139,5 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-ASGI_APPLICATION = "aicallagent.asgi.application"
+# Gemini API Key
+GENAI_API_KEY = os.getenv("GENAI_API_KEY", "your_default_api_key_here")
